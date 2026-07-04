@@ -1,0 +1,42 @@
+# Node
+node_modules/
+*.log
+.next/
+dist/
+build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Project specific
+sent_numbers.json
+whatsapp_results.json
+.claude/
