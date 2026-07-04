@@ -112,52 +112,58 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Daily Breakdown */}
+      {/* Daily Breakdown - Chart */}
       <div className="card">
         <h3 className="card-title">📊 Envios por Dia</h3>
         {data.dailyBreakdown.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Enviadas</th>
-                  <th>Falhadas</th>
-                  <th>Total</th>
-                  <th>Progressão</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.dailyBreakdown.map((day, idx) => (
-                  <tr key={idx}>
-                    <td>{new Date(day.date).toLocaleDateString("pt-BR")}</td>
-                    <td style={{ color: "#28a745", fontWeight: "600" }}>{day.sent}</td>
-                    <td style={{ color: "#dc3545", fontWeight: "600" }}>{day.failed}</td>
-                    <td>{day.total}</td>
-                    <td>
-                      <div
-                        style={{
-                          height: "20px",
-                          backgroundColor: "#f0f0f0",
-                          borderRadius: "4px",
-                          overflow: "hidden",
-                          width: "100px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            backgroundColor: "#28a745",
-                            width: `${(day.total / (data.peakDay.count || 1)) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </td>
+          <>
+            <div style={{ height: "300px", display: "flex", alignItems: "flex-end", justifyContent: "space-around", marginBottom: "24px", paddingBottom: "20px", borderBottom: "1px solid var(--color-border)" }}>
+              {data.dailyBreakdown.map((day, idx) => {
+                const maxCount = data.peakDay.count || 1;
+                const height = (day.total / maxCount) * 200;
+                return (
+                  <div key={idx} style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        height: `${height}px`,
+                        width: "30px",
+                        backgroundColor: "#0066cc",
+                        borderRadius: "4px 4px 0 0",
+                        marginBottom: "8px",
+                      }}
+                      title={`${day.total} (${day.sent} enviadas, ${day.failed} falhadas)`}
+                    />
+                    <p style={{ fontSize: "10px", color: "var(--color-text-secondary)" }}>
+                      {new Date(day.date).getDate()}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Enviadas</th>
+                    <th>Falhadas</th>
+                    <th>Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.dailyBreakdown.map((day, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontSize: "12px" }}>{new Date(day.date).toLocaleDateString("pt-BR")}</td>
+                      <td style={{ color: "#28a745", fontWeight: "600" }}>{day.sent}</td>
+                      <td style={{ color: "#dc3545", fontWeight: "600" }}>{day.failed}</td>
+                      <td>{day.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <p>Nenhum dado disponível.</p>
         )}

@@ -1,11 +1,13 @@
 "use client";
 
 import { useAuth } from "@/lib/auth-context";
+import { useDarkMode } from "@/lib/use-dark-mode";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { isDark, toggle } = useDarkMode();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -21,12 +23,12 @@ export function Navbar() {
   return (
     <header>
       <div className="container">
-        <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Link href="/dashboard" style={{ textDecoration: "none", fontSize: "20px", fontWeight: "bold", color: "#0066cc" }}>
+        <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          <Link href="/dashboard" style={{ textDecoration: "none", fontSize: "20px", fontWeight: "bold", color: "var(--color-primary)", whiteSpace: "nowrap" }}>
             🚀 ZapFlow
           </Link>
 
-          <div style={{ display: "flex", gap: "24px" }}>
+          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
             <Link href="/dashboard">Dashboard</Link>
             <Link href="/campaigns">Campanhas</Link>
             <Link href="/instances">Instâncias</Link>
@@ -35,8 +37,11 @@ export function Navbar() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <span style={{ fontSize: "14px", color: "#666" }}>{user?.email}</span>
-            <button className="btn-secondary" style={{ padding: "6px 12px" }} onClick={handleLogout}>
+            <button className="dark-mode-toggle" onClick={toggle} title="Toggle dark mode">
+              {isDark ? "☀️" : "🌙"}
+            </button>
+            <span style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>{user?.email}</span>
+            <button className="btn-secondary btn-small" onClick={handleLogout}>
               Sair
             </button>
           </div>
