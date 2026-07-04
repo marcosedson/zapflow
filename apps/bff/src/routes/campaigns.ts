@@ -5,6 +5,7 @@ import { prisma } from "../index.js";
 import { requireAuth, AuthenticatedRequest } from "../middleware/tenant-auth.js";
 import { calculateSafeDelay, getEffectiveDailyLimit } from "../lib/smart-delay.js";
 import { campaignQueue } from "../queue/campaign-worker.js";
+import { filterContactsBySegment, getSegmentStats } from "../lib/segmentation.js";
 
 const router = Router();
 
@@ -254,8 +255,8 @@ router.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res: Respon
 
 /**
  * POST /api/campaigns/:id/add-recipients
- * Adicionar recipients à campanha (contatos de lista ou todos)
- * Body: { listId? } ou { all: true }
+ * Adicionar recipients à campanha com segmentação opcional
+ * Body: { all?, listId?, filter?: { excludeRecentlySent?, onlyTags?, excludeTags? } }
  */
 router.post(
   "/:id/add-recipients",
@@ -263,7 +264,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
-      const { listId, all } = req.body;
+      const { listId, all, filter } = req.body;
 
       const campaign = await prisma.campaign.findFirst({
         where: {
@@ -276,35 +277,48 @@ router.post(
         return res.status(404).json({ error: "Campaign not found" });
       }
 
-      let contacts;
+      let contactIds: string[] = [];
 
       if (all) {
-        contacts = await prisma.contact.findMany({
+        // Todos os contatos (não opt-out)
+        const contacts = await prisma.contact.findMany({
           where: {
             tenantId: req.tenant!.id,
             optedOut: false,
           },
           select: { id: true, name: true, phone: true },
         });
+        contactIds = contacts.map((c) => c.id);
       } else if (listId) {
-        // Buscar contatos da lista
+        // Contatos de lista específica
         const listMembers = await prisma.contactListMember.findMany({
           where: { listId },
-          include: {
-            // Nota: não há relação direta, usar contactId
-          },
         });
 
-        contacts = await prisma.contact.findMany({
+        const contacts = await prisma.contact.findMany({
           where: {
             id: { in: listMembers.map((m) => m.contactId) },
+            tenantId: req.tenant!.id,
             optedOut: false,
           },
           select: { id: true, name: true, phone: true },
         });
+        contactIds = contacts.map((c) => c.id);
       } else {
-        return res.status(400).json({ error: "Missing listId or all parameter" });
+        return res.status(400).json({ error: "Missing all or listId parameter" });
       }
+
+      // Aplicar filtros de segmentação
+      if (filter) {
+        const filtered = await filterContactsBySegment(req.tenant!.id, filter);
+        contactIds = contactIds.filter((id) => filtered.includes(id));
+      }
+
+      // Buscar dados completos
+      const contacts = await prisma.contact.findMany({
+        where: { id: { in: contactIds } },
+        select: { id: true, name: true, phone: true },
+      });
 
       // Criar recipients
       const recipients = await prisma.campaignRecipient.createMany({
@@ -317,7 +331,7 @@ router.post(
         skipDuplicates: true,
       });
 
-      res.json({ added: recipients.count });
+      res.json({ added: recipients.count, filtered: contactIds.length });
     } catch (error: any) {
       console.error("[campaigns/:id/add-recipients] Error:", error);
       res.status(500).json({ error: error.message });
