@@ -4,7 +4,12 @@ import compression from "compression";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 
+// Import firebase to initialize it
+import "./firebase.js";
+
 import adminRoutes from "./routes/admin.js";
+import instancesRoutes from "./routes/instances.js";
+import contactsRoutes from "./routes/contacts.js";
 
 dotenv.config();
 
@@ -26,6 +31,8 @@ app.get("/health", (_req, res) => {
 
 // Routes
 app.use("/api/admin", adminRoutes);
+app.use("/api/instances", instancesRoutes);
+app.use("/api/contacts", contactsRoutes);
 
 // Start server
 const startServer = async () => {
