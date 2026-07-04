@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ Plans ============
+model Plan {
+  id            String    @id @default(cuid())
+  name          String    @unique // "Starter", "Pro", "Business", "Enterprise"
+  priceMonthly  Int       // em centavos: 9700 = R$97
+  dailyLimit    Int       // -1 = ilimitado
+  instanceLimit Int
+  features      Json      // { audio: bool, document: bool, video: bool, whitelabel: bool, api: bool }
+  tenants       Tenant[]
+  createdAt     DateTime  @default(now())
+}
+
+// ============ Multi-tenant ============
+model Tenant {
+  id          String       @id @default(cuid())
+  firebaseUid String       @unique
+  name        String
+  email       String       @unique
+  planId      String
+  plan        Plan         @relation(fields: [planId], references: [id])
+  status      String       @default("trial") // "trial" | "active" | "suspended"
+
+  // White label
+  brandName   String?
+  brandLogo   String?
+
+  // Relations
+  instances   Instance[]
+  contacts    Contact[]
+  campaigns   Campaign[]
+  usageLogs   UsageLog[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+// ============ WhatsApp Instances ============
+model Instance {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name         String     // "Loja Principal", "Suporte"
+  instanceName String     // nome na Evolution API
+  apiUrl       String     // URL da instância Evolution
+  apiKey       String     // credencial
+
+  status       String     @default("disconnected") // "connected" | "disconnected" | "banned"
+  healthScore  Int        @default(100) // 0-100
+  warmupDay    Int        @default(1)   // dia do warm-up
+
+  lastSeenAt   DateTime?
+
+  // Relations
+  campaigns    Campaign[]
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+// ============ Contacts ============
+model Contact {
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name       String
+  phone      String    // normalizado: 55XXXXXXXXXXX
+  tags       String[]  @default([])
+
+  optedOut   Boolean   @default(false)
+  optedOutAt DateTime?
+  lastSentAt DateTime? // para evitar duplicatas
+
+  createdAt  DateTime  @default(now())
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([optedOut])
+}
+
+// ============ Contact Lists ============
+model ContactList {
+  id        String               @id @default(cuid())
+  tenantId  String
+  name      String
+
+  contacts  ContactListMember[]
+
+  createdAt DateTime             @default(now())
+}
+
+model ContactListMember {
+  listId    String
+  contactId String
+  list      ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@id([listId, contactId])
+  @@index([listId])
+}
+
+// ============ Campaigns ============
+model Campaign {
+  id          String              @id @default(cuid())
+  tenantId    String
+  instanceId  String
+  instance    Instance            @relation(fields: [instanceId], references: [id])
+
+  name        String
+  status      String   @default("draft") // draft|scheduled|running|paused|completed|failed
+  messageType String   @default("text") // text|image|audio|document|video
+
+  content     String   // texto ou legenda
+  mediaUrl    String?  // URL do arquivo (se houver)
+
+  delayMs     Int      @default(240000) // calculado pelo smart-delay
+
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  recipients  CampaignRecipient[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([instanceId])
+}
+
+model CampaignRecipient {
+  id         String    @id @default(cuid())
+  campaignId String
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  phone      String
+  name       String
+
+  status     String    @default("pending") // pending|sent|failed|skipped|opted_out
+  sentAt     DateTime?
+  error      String?
+
+  createdAt  DateTime  @default(now())
+
+  @@index([campaignId, status])
+  @@index([campaignId])
+}
+
+// ============ Usage Tracking ============
+model UsageLog {
+  id       String   @id @default(cuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  date     DateTime @db.Date
+  sent     Int      @default(0)
+  failed   Int      @default(0)
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+}

@@ -1,0 +1,26 @@
+{
+  "name": "zapflow",
+  "version": "0.1.0",
+  "description": "WhatsApp Marketing SaaS — Multi-tenant com proteção anti-bloqueio",
+  "private": true,
+  "workspaces": [
+    "apps/bff",
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:migrate": "cd apps/bff && prisma migrate dev",
+    "db:seed": "cd apps/bff && node prisma/seed.ts"
+  },
+  "dependencies": {
+    "turbo": "^1.10.16"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.6"
+  }
+}

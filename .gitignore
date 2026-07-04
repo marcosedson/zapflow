@@ -4,6 +4,8 @@ node_modules/
 .next/
 dist/
 build/
+pnpm-lock.yaml
+.pnpm/
 
 # Database
 *.db
